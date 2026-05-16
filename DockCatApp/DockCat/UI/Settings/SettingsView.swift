@@ -77,15 +77,16 @@ struct SettingsView: View {
     private let collectableInventory: CollectableInventory
     private let labelWidth: CGFloat = 112
     private let controlWidth: CGFloat = 196
-    private let displayControlWidth: CGFloat = 240
     private let rowSpacing: CGFloat = 6
     private let panelWidth: CGFloat = 420
     private let statisticsContentWidth: CGFloat = 392
+    private let collectablesGridWidth: CGFloat = 404
     private var assetInputWidth: CGFloat { controlWidth }
     private var rowWidth: CGFloat { labelWidth + rowSpacing + controlWidth }
     private let onOpenAssetPacksFolder: () -> Void
     private let onReloadAssetPackIDs: () -> [String]
     private let onLoadAssetPack: (String) -> AssetPackPreviewResult
+    private let onRestoreData: () -> Void
     var onSave: (AppSettings) -> Void
 
     init(
@@ -98,6 +99,7 @@ struct SettingsView: View {
         onOpenAssetPacksFolder: @escaping () -> Void,
         onReloadAssetPackIDs: @escaping () -> [String],
         onLoadAssetPack: @escaping (String) -> AssetPackPreviewResult,
+        onRestoreData: @escaping () -> Void,
         onSave: @escaping (AppSettings) -> Void
     ) {
         _draft = State(initialValue: settings)
@@ -109,6 +111,7 @@ struct SettingsView: View {
         self.onOpenAssetPacksFolder = onOpenAssetPacksFolder
         self.onReloadAssetPackIDs = onReloadAssetPackIDs
         self.onLoadAssetPack = onLoadAssetPack
+        self.onRestoreData = onRestoreData
         self.onSave = onSave
     }
 
@@ -151,19 +154,26 @@ struct SettingsView: View {
 
     private var petTab: some View {
         VStack(spacing: 10) {
-            petImage
-                .frame(maxWidth: .infinity)
+            HStack {
+                Spacer()
+                petImage
+                    .padding(.leading, labelWidth + rowSpacing)
+                    .frame(width: rowWidth, alignment: .leading)
+                Spacer()
+            }
 
             HStack {
                 Spacer()
                 VStack(alignment: .leading, spacing: 12) {
                     compactTextField(strings.settingsCatName, text: $draft.catName)
                     compactTextField(strings.settingsSalutation, text: $draft.userSalutation)
-                    languageRow
                     assetPackRow
                     assetPackActionsRow
                     compactStepper(strings.settingsScale, value: scaleBinding, range: 1...100, step: 1, suffix: "%")
                     compactStepper(strings.settingsStartPosition, value: startPositionBinding, range: 0...100, step: 1, suffix: "%")
+                    catActivityScopeRow
+                    displaySelectionRow
+                    languageRow
                 }
                 .frame(width: rowWidth, alignment: .leading)
                 Spacer()
@@ -179,11 +189,11 @@ struct SettingsView: View {
             Image(nsImage: previewImage)
                 .resizable()
                 .scaledToFit()
-                .frame(width: 120, height: 120)
+                .frame(width: 104, height: 104)
         } else {
             RoundedRectangle(cornerRadius: 8)
                 .fill(Color(nsColor: .separatorColor).opacity(0.25))
-                .frame(width: 120, height: 120)
+                .frame(width: 104, height: 104)
         }
     }
 
@@ -201,9 +211,24 @@ struct SettingsView: View {
         HStack(spacing: rowSpacing) {
             Text(strings.settingsLanguage)
                 .frame(width: labelWidth, alignment: .trailing)
-            Picker("", selection: $draft.language) {
+            Picker("", selection: languageBinding) {
                 Text("中文").tag(AppLanguage.chinese)
                 Text("English").tag(AppLanguage.english)
+            }
+            .pickerStyle(.segmented)
+            .labelsHidden()
+            .frame(width: controlWidth)
+        }
+        .frame(width: rowWidth, alignment: .leading)
+    }
+
+    private var catActivityScopeRow: some View {
+        HStack(spacing: rowSpacing) {
+            Text(strings.settingsCatActivityScope)
+                .frame(width: labelWidth, alignment: .trailing)
+            Picker("", selection: $draft.catActivityScope) {
+                Text(strings.settingsCatActivityScopeDockEdge).tag(CatActivityScope.dockEdge)
+                Text(strings.settingsCatActivityScopeDesktop).tag(CatActivityScope.desktop)
             }
             .pickerStyle(.segmented)
             .labelsHidden()
@@ -249,7 +274,14 @@ struct SettingsView: View {
                 },
                 content: {
                     compactStepper(strings.settingsWaterReminder, value: minutesBinding(\.waterReminderInterval), range: 1...240, step: 5, suffix: strings.minuteUnit)
+                    compactTextField(strings.settingsReminderMessage, text: $draft.waterReminderMessageSuffix)
                     compactStepper(strings.settingsMovementReminder, value: minutesBinding(\.movementReminderInterval), range: 5...360, step: 5, suffix: strings.minuteUnit)
+                    compactTextField(strings.settingsReminderMessage, text: $draft.movementReminderMessageSuffix)
+                    customReminderToggleRow
+                    if draft.customReminderEnabled {
+                        compactStepper(strings.settingsCustomReminder, value: minutesBinding(\.customReminderInterval), range: 1...360, step: 5, suffix: strings.minuteUnit)
+                        compactTextField(strings.settingsReminderMessage, text: $draft.customReminderMessageSuffix)
+                    }
                 }
             )
 
@@ -262,15 +294,7 @@ struct SettingsView: View {
                     rangeRow(strings.settingsWalkDuration, minimum: minutesBinding(\.walkDurationMinimum), maximum: minutesBinding(\.walkDurationMaximum), range: 1...480)
                     compactStepper(strings.settingsWalkSpeed, value: speedBinding, range: 8...240, step: 4, suffix: "px/s")
                     compactStepper(strings.settingsDefaultOutingDuration, value: minutesBinding(\.defaultOutingDuration), range: 5...480, step: 5, suffix: strings.minuteUnit)
-                }
-            )
-
-            settingsPanel(
-                title: {
-                    sectionTitle(strings.settingsDisplaySection)
-                },
-                content: {
-                    displaySelectionRow
+                    compactTextField(strings.settingsOutingDepartureMessage, text: $draft.outingDepartureMessageSuffix)
                 }
             )
 
@@ -309,11 +333,11 @@ struct SettingsView: View {
     private var aboutTab: some View {
         VStack(spacing: 20) {
             Text("\(strings.settingsVersionPrefix): \(appVersion)")
-                .font(.system(size: 14, weight: .semibold))
+                .font(.system(size: 15, weight: .semibold))
 
             /*
             Text("送给 77，祝你和栗子一切都好")
-                .font(.system(size: 14))
+                .font(.system(size: 15))
             */
 
             VStack(spacing: 6) {
@@ -324,27 +348,60 @@ struct SettingsView: View {
                 }
             }
 
-            HStack(spacing: 0) {
+            VStack(spacing: 12) {
                 Text(strings.settingsDonationLead)
-                Link(strings.settingsDonationLink, destination: donationURL)
+                HStack(spacing: 12) {
+                    Button {
+                        NSWorkspace.shared.open(weChatDonationURL)
+                    } label: {
+                        donationButtonLabel(
+                            title: strings.settingsWeChatDonation,
+                            detail: strings.settingsWeChatDonationDetail
+                        )
+                    }
+                    Button {
+                        NSWorkspace.shared.open(buyMeACoffeeURL)
+                    } label: {
+                        donationButtonLabel(
+                            title: strings.settingsBuyMeACoffee,
+                            detail: strings.settingsBuyMeACoffeeDetail
+                        )
+                    }
+                }
             }
         }
+        .font(.system(size: 15))
         .frame(width: panelWidth)
         .multilineTextAlignment(.center)
         .lineLimit(nil)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 
+    private func donationButtonLabel(title: String, detail: String) -> some View {
+        VStack(spacing: 2) {
+            Text(title)
+                .font(.system(size: 15, weight: .semibold))
+            Text(detail)
+                .font(.system(size: 13))
+        }
+        .multilineTextAlignment(.center)
+        .frame(minWidth: 118)
+    }
+
     private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "0.4.2"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "unknown"
     }
 
     private var projectURL: URL {
         URL(string: "https://github.com/Auwuua/DockCat")!
     }
 
-    private var donationURL: URL {
+    private var weChatDonationURL: URL {
         URL(string: "https://github.com/Auwuua/DockCat/blob/main/README_figs/Wechat_donate.jpg")!
+    }
+
+    private var buyMeACoffeeURL: URL {
+        URL(string: "https://buymeacoffee.com/auwuua")!
     }
 
     private var collectablesTab: some View {
@@ -386,12 +443,21 @@ struct SettingsView: View {
                             collectableCell(item)
                         }
                     }
-                    .frame(maxWidth: .infinity, alignment: .center)
+                    .frame(width: collectablesGridWidth, alignment: .center)
                 }
                 .frame(height: 260)
             }
 
             Spacer()
+
+            HStack {
+                Button(strings.settingsRestoreData) {
+                    onRestoreData()
+                }
+                Spacer()
+            }
+            .frame(width: collectablesGridWidth)
+            .padding(.bottom, 16)
         }
         .padding(.top, 12)
         .padding(.horizontal, 14)
@@ -408,9 +474,9 @@ struct SettingsView: View {
                 }
             }
             .labelsHidden()
-            .frame(width: displayControlWidth, alignment: .leading)
+            .frame(width: controlWidth, alignment: .leading)
         }
-        .frame(width: labelWidth + rowSpacing + displayControlWidth, alignment: .center)
+        .frame(width: rowWidth, alignment: .leading)
     }
 
     private var acquiredCollectables: [CollectableDisplayItem] {
@@ -495,6 +561,23 @@ struct SettingsView: View {
             TextField(title, text: text)
                 .textFieldStyle(.roundedBorder)
                 .frame(width: controlWidth)
+        }
+        .frame(width: rowWidth, alignment: .leading)
+    }
+
+    private var customReminderToggleRow: some View {
+        HStack(spacing: rowSpacing) {
+            Spacer()
+                .frame(width: labelWidth)
+            HStack(spacing: 4) {
+                Toggle("", isOn: $draft.customReminderEnabled)
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+                Text(strings.settingsCustomReminder)
+                    .font(.system(size: 14))
+                Spacer()
+            }
+            .frame(width: controlWidth, alignment: .leading)
         }
         .frame(width: rowWidth, alignment: .leading)
     }
@@ -648,6 +731,19 @@ struct SettingsView: View {
         )
     }
 
+    private var languageBinding: Binding<AppLanguage> {
+        Binding(
+            get: { draft.language },
+            set: { newLanguage in
+                applyLanguageChange(to: newLanguage)
+            }
+        )
+    }
+
+    private func applyLanguageChange(to newLanguage: AppLanguage) {
+        draft.applyLanguageChangePreservingCustomText(to: newLanguage)
+    }
+
     private func minutesBinding(_ keyPath: WritableKeyPath<AppSettings, TimeInterval>) -> Binding<Double> {
         Binding(
             get: { draft[keyPath: keyPath] / 60 },
@@ -670,7 +766,19 @@ struct SettingsView: View {
         normalized.walkBaseSpeed = max(1, normalized.walkBaseSpeed)
         normalized.catScalePercent = max(1, min(100, normalized.catScalePercent))
         normalized.startPositionPercent = max(0, min(100, normalized.startPositionPercent))
+        normalized.waterReminderMessageSuffix = normalizedReminderSuffix(normalized.waterReminderMessageSuffix, fallback: strings.defaultReminderMessageSuffix(for: .water))
+        normalized.movementReminderMessageSuffix = normalizedReminderSuffix(normalized.movementReminderMessageSuffix, fallback: strings.defaultReminderMessageSuffix(for: .movement))
+        normalized.customReminderMessageSuffix = normalizedReminderSuffix(normalized.customReminderMessageSuffix, fallback: strings.defaultReminderMessageSuffix(for: .custom))
+        normalized.outingDepartureMessageSuffix = normalizedReminderSuffix(
+            normalized.outingDepartureMessageSuffix,
+            fallback: AppSettings.defaults(for: normalized.language).outingDepartureMessageSuffix
+        )
         return normalized
+    }
+
+    private func normalizedReminderSuffix(_ suffix: String, fallback: String) -> String {
+        let trimmed = suffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? fallback : trimmed
     }
 }
 

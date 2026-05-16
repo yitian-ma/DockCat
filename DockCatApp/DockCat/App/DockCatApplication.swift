@@ -1,4 +1,5 @@
 import AppKit
+import UniformTypeIdentifiers
 
 @MainActor
 final class DockCatApplication: NSObject, NSApplicationDelegate {
@@ -212,8 +213,7 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
         settingsWindowController.onSave = { [weak self] updated in
             guard let self else { return }
             let previousAssetPackID = self.settings.selectedAssetPackID
-            let previousStartPositionPercent = self.settings.startPositionPercent
-            let previousActivityDisplayID = self.settings.activityDisplayID
+            let previousCatActivityScope = self.settings.catActivityScope
             let previousLanguage = self.settings.language
             self.settings = updated
             self.reminderScheduler.updateSettings(updated)
@@ -226,11 +226,8 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
             }
             self.catWindow.setImageScale(percent: updated.catScalePercent)
             self.activitySpace = self.currentActivitySpace()
-            let shouldKeepCurrentPosition = updated.startPositionPercent == previousStartPositionPercent
-                && updated.activityDisplayID == previousActivityDisplayID
-            let point = shouldKeepCurrentPosition
-                ? self.clampedCatPoint(self.stateMachine.position)
-                : self.startPositionAnchor()
+            let shouldResetPosition = previousCatActivityScope == .desktop && updated.catActivityScope == .dockEdge
+            let point = shouldResetPosition ? self.startPositionAnchor() : self.clampedCatPoint(self.stateMachine.position)
             self.updateCurrentPositionPreservingState(point)
             self.updateStateMachineParameters()
             self.saveUserDataBackup()
@@ -241,7 +238,8 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
         userDataBackupStore.save(
             settings: settings,
             usageStatistics: usageSessionTracker.snapshot,
-            collectableInventory: collectableInventory
+            collectableInventory: collectableInventory,
+            outingCatalog: outingCatalog
         )
     }
 
@@ -254,6 +252,9 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
             guard let self else { return }
             self.assetLoader.prepareCustomPacksDirectory()
             NSWorkspace.shared.open(self.assetLoader.customPacksRoot())
+        }
+        settingsWindowController.onRestoreData = { [weak self] in
+            self?.beginUserDataRestore()
         }
         settingsWindowController.onLoadAssetPack = { [weak self] selectedID in
             guard let self else {
@@ -276,6 +277,68 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
             } ?? self.renderer.randomPose(for: .dialogue).image
             return AssetPackPreviewResult(report: report, dialogueImage: previewImage)
         }
+    }
+
+    private func beginUserDataRestore() {
+        guard confirmUserDataRestore() else { return }
+
+        let panel = NSOpenPanel()
+        panel.title = strings.restoreDataChooseFileTitle
+        panel.canChooseFiles = true
+        panel.canChooseDirectories = false
+        panel.allowsMultipleSelection = false
+        panel.allowedContentTypes = [.json]
+        panel.directoryURL = userDataBackupStore.backupDirectoryURL
+
+        let response = panel.runModal()
+        guard response == .OK, let url = panel.url else { return }
+
+        do {
+            let result = try userDataBackupStore.restoreData(from: url, outingCatalog: outingCatalog)
+            applyUserDataRestore(result)
+            showUserDataRestoreSuccess(skippedCollectableNames: result.skippedCollectableNames)
+        } catch {
+            DockCatLog.app.error("Failed to restore user data backup: \(error.localizedDescription)")
+            showAlert(title: strings.restoreDataFailureTitle, message: strings.restoreDataInvalidFileMessage)
+        }
+    }
+
+    private func confirmUserDataRestore() -> Bool {
+        let alert = NSAlert()
+        alert.alertStyle = .warning
+        alert.messageText = strings.restoreDataConfirmTitle
+        alert.informativeText = strings.restoreDataConfirmMessage
+        alert.addButton(withTitle: strings.settingsRestoreData)
+        alert.addButton(withTitle: strings.alertCancel)
+        return alert.runModal() == .alertFirstButtonReturn
+    }
+
+    private func applyUserDataRestore(_ result: UserDataRestoreResult) {
+        collectableInventory = result.collectableInventory
+        collectableInventoryStore.save(result.collectableInventory)
+        usageStatisticsStore.save(result.usageStatistics)
+        usageSessionTracker.replaceStatistics(result.usageStatistics)
+        settingsWindowController.update(usageStatistics: usageSessionTracker.snapshot)
+        settingsWindowController.update(collectableInventory: collectableInventory)
+        saveUserDataBackup()
+    }
+
+    private func showUserDataRestoreSuccess(skippedCollectableNames: [String]) {
+        var message = strings.restoreDataSuccessMessage
+        if !skippedCollectableNames.isEmpty {
+            message += "\n\n\(strings.restoreDataSkippedCollectablesHeader)\n"
+            message += skippedCollectableNames.map { "• \($0)" }.joined(separator: "\n")
+        }
+        showAlert(title: strings.restoreDataSuccessTitle, message: message)
+    }
+
+    private func showAlert(title: String, message: String) {
+        let alert = NSAlert()
+        alert.alertStyle = .informational
+        alert.messageText = title
+        alert.informativeText = message
+        alert.addButton(withTitle: strings.assetPackAlertOK)
+        alert.runModal()
     }
 
     private func configureApplicationMenu() {
@@ -419,7 +482,7 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
 
     private func showReminder(_ type: ReminderType) {
         catWindow.showBubble(
-            message: type.message(salutation: settings.userSalutation, language: settings.language),
+            message: type.message(settings: settings),
             primaryTitle: strings.done,
             secondaryTitle: strings.snoozeFiveMinutes,
             onPrimary: { [weak self] in
@@ -487,7 +550,7 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
 
     private func showOutingDepartureResponse() {
         catWindow.showBubble(
-            message: strings.outingDeparture(salutation: settings.userSalutation),
+            message: strings.outingDeparture(settings: settings),
             primaryTitle: strings.ok,
             onPrimary: { [weak self] in
                 self?.startConfirmedOuting()
@@ -698,7 +761,7 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
     private func advanceWalk() {
         guard case .walking = stateMachine.state else { return }
         let speed = CGFloat(settings.walkBaseSpeed)
-        let walkRange = activitySpace.walkRangeForContent(width: catWindow.catFrameSize.width)
+        let walkRange = activitySpace.walkRangeForContent(width: catWindow.catFrameSize.width, scope: settings.catActivityScope)
         var nextX = stateMachine.position.x + walkDirection * speed / 30.0
         if nextX <= walkRange.lowerBound {
             nextX = walkRange.lowerBound
@@ -707,7 +770,7 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
             nextX = walkRange.upperBound
             walkDirection = -1
         }
-        let point = clampedCatPoint(CGPoint(x: nextX, y: activitySpace.baselineY))
+        let point = clampedCatPoint(CGPoint(x: nextX, y: stateMachine.position.y))
         stateMachine.updateLongDurationPosition(point)
         catWindow.setAnchor(point)
         catWindow.setMirrored(walkDirection < 0)
@@ -743,11 +806,11 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
             nextX = targetX
             stopWalk()
             catWindow.hide()
-            stateMachine.updateOutingWalkPosition(CGPoint(x: nextX, y: activitySpace.baselineY))
+            stateMachine.updateOutingWalkPosition(CGPoint(x: nextX, y: stateMachine.position.y))
             stateMachine.markAway()
             return
         }
-        let point = CGPoint(x: nextX, y: activitySpace.baselineY)
+        let point = CGPoint(x: nextX, y: stateMachine.position.y)
         stateMachine.updateOutingWalkPosition(point)
         catWindow.setAnchor(point)
         catWindow.setMirrored(false)
@@ -828,10 +891,10 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
     }
 
     private func anchorPoint(forCenterX centerX: CGFloat) -> CGPoint {
-        return clampedCatPoint(CGPoint(
+        return activitySpace.dockEdgeClampedPoint(CGPoint(
             x: centerX - catWindow.catFrameSize.width / 2,
             y: activitySpace.baselineY
-        ))
+        ), contentWidth: catWindow.catFrameSize.width)
     }
 
     private func updateCurrentPositionPreservingState(_ point: CGPoint) {
@@ -885,11 +948,20 @@ final class DockCatApplication: NSObject, NSApplicationDelegate {
     }
 
     private func clampedCatPoint(_ point: CGPoint) -> CGPoint {
-        activitySpace.clampedPoint(point, contentWidth: catWindow.catFrameSize.width)
+        activitySpace.clampedPoint(point, contentSize: catWindow.catFrameSize, scope: settings.catActivityScope)
     }
 
     private func outingWalkOutDragPoint(_ point: CGPoint) -> CGPoint {
-        let visibleRange = activitySpace.walkRangeForContent(width: catWindow.catFrameSize.width)
+        if settings.catActivityScope == .desktop {
+            let visibleRange = activitySpace.desktopWalkRangeForContent(width: catWindow.catFrameSize.width)
+            let targetX = activitySpace.screenFrame.maxX + catWindow.catFrameSize.width
+            let yRange = activitySpace.desktopYRangeForContent(height: catWindow.catFrameSize.height)
+            return CGPoint(
+                x: GeometryUtils.clamped(point.x, to: visibleRange.lowerBound ... targetX),
+                y: GeometryUtils.clamped(point.y, to: yRange)
+            )
+        }
+        let visibleRange = activitySpace.dockEdgeWalkRangeForContent(width: catWindow.catFrameSize.width)
         let targetX = activitySpace.screenFrame.maxX + catWindow.catFrameSize.width
         return CGPoint(
             x: GeometryUtils.clamped(point.x, to: visibleRange.lowerBound ... targetX),

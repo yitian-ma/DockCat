@@ -73,6 +73,8 @@ struct UsageStatistics: Codable, Equatable {
             completedWaterReminderCount += 1
         case .movement:
             completedMovementReminderCount += 1
+        case .custom:
+            break
         }
     }
 

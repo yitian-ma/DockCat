@@ -6,7 +6,7 @@ DockCat custom cats are local asset packs. Each pack is one folder with a `manif
 
 ## Quick Start
 
-1. Open DockCat Settings > Cat.
+1. Open DockCat Settings > Pet.
 2. Click `Open folder`. DockCat opens:
 
 ```text
@@ -15,9 +15,9 @@ DockCat custom cats are local asset packs. Each pack is one folder with a `manif
 
 3. Open the `my-cat/` template folder.
 4. Add at least one image you want to use to the corresponding pose folder, such as `poses/dialogue/stand.png`.
-5. Return to Settings > Cat, select or enter `my-cat`, click `Load pack`, then save.
+5. Return to Settings > Pet, select or enter `my-cat`, click `Load pack`, then save.
 
-The resource pack ID is the folder name under `CatPacks/`. Feel free to change `my-cat/` to your cat's name.
+The resource pack ID is the folder name under `CatPacks/`. Feel free to change `my-cat/` to your pet's name.
 
 DockCat supports incomplete packs for preview. Missing assets are filled from the default cat.
 

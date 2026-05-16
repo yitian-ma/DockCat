@@ -13,6 +13,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
     var onSave: ((AppSettings) -> Void)?
     var assetPackIDsProvider: () -> [String] = { [] }
     var onOpenAssetPacksFolder: () -> Void = {}
+    var onRestoreData: (() -> Void)?
     var onLoadAssetPack: (String) -> AssetPackPreviewResult = { id in
         AssetPackPreviewResult(
             report: AssetPackValidationReport(
@@ -47,18 +48,22 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
 
     func update(settings: AppSettings) {
         self.settings = settings
+        refreshContentIfOpen()
     }
 
     func update(usageStatistics: UsageStatistics) {
         self.usageStatistics = usageStatistics
+        refreshContentIfOpen()
     }
 
     func update(collectableInventory: CollectableInventory) {
         self.collectableInventory = collectableInventory
+        refreshContentIfOpen()
     }
 
     func update(dialogueImage: NSImage?) {
         self.dialogueImage = dialogueImage
+        refreshContentIfOpen()
     }
 
     func show() {
@@ -77,6 +82,7 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
         window.title = AppStrings(language: settings.language).settingsWindowTitle
         window.setContentSize(NSSize(width: 520, height: 580))
         window.styleMask = [.titled, .closable, .miniaturizable]
+        window.level = NSWindow.Level(rawValue: NSWindow.Level.floating.rawValue + 1)
         window.isReleasedWhenClosed = false
         window.delegate = self
         self.window = window
@@ -98,7 +104,10 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             availableAssetPackIDs: assetPackIDsProvider(),
             onOpenAssetPacksFolder: onOpenAssetPacksFolder,
             onReloadAssetPackIDs: assetPackIDsProvider,
-            onLoadAssetPack: onLoadAssetPack
+            onLoadAssetPack: onLoadAssetPack,
+            onRestoreData: { [weak self] in
+                self?.onRestoreData?()
+            }
         ) { [weak self] updated in
             guard let self else { return }
             self.settings = updated
@@ -106,6 +115,16 @@ final class SettingsWindowController: NSObject, NSWindowDelegate {
             self.onSave?(updated)
             self.window?.close()
         }
+    }
+
+    private func refreshContentIfOpen() {
+        guard let window,
+              let hosting = window.contentViewController as? NSHostingController<SettingsView>
+        else {
+            return
+        }
+        window.title = AppStrings(language: settings.language).settingsWindowTitle
+        hosting.rootView = makeSettingsView()
     }
 
     private func bringToFront(_ window: NSWindow) {

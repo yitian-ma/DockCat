@@ -23,6 +23,14 @@ final class UsageSessionTracker {
         return current
     }
 
+    func replaceStatistics(_ restored: UsageStatistics) {
+        statistics = restored
+        if activeStartDate != nil {
+            activeStartDate = now()
+        }
+        onChange(snapshot)
+    }
+
     func start() {
         resume()
     }

@@ -20,7 +20,7 @@ struct AppStrings {
     var menuGoOut: String {
         switch language {
         case .chinese: "出门玩吧 (专注模式)"
-        case .english: "Explore outdoors (focus mode)"
+        case .english: "Play outdoor (focus mode)"
         }
     }
 
@@ -69,16 +69,28 @@ struct AppStrings {
         }
     }
 
-    func reminderMessage(_ type: ReminderType, salutation: String) -> String {
+    func reminderMessage(_ type: ReminderType, settings: AppSettings) -> String {
+        reminderMessage(type, salutation: settings.userSalutation, suffix: settings.reminderMessageSuffix(for: type))
+    }
+
+    func reminderMessage(_ type: ReminderType, salutation: String, suffix: String? = nil) -> String {
+        let messageSuffix = suffix ?? defaultReminderMessageSuffix(for: type)
+        switch language {
+        case .chinese:
+            return "\(salutation)，\(messageSuffix)"
+        case .english:
+            return "\(salutation), \(messageSuffix)"
+        }
+    }
+
+    func defaultReminderMessageSuffix(for type: ReminderType) -> String {
         switch (language, type) {
-        case (.chinese, .water):
-            return "\(salutation)，该喝水啦"
-        case (.chinese, .movement):
-            return "\(salutation)，该起来走走啦"
-        case (.english, .water):
-            return "\(salutation), time to drink some water."
-        case (.english, .movement):
-            return "\(salutation), time for a stand up reminder."
+        case (.chinese, .water): return "该喝水啦"
+        case (.chinese, .movement): return "该起来走走啦"
+        case (.chinese, .custom): return "休息一下吧"
+        case (.english, .water): return "time to drink some water."
+        case (.english, .movement): return "time to stand up a bit."
+        case (.english, .custom): return "take a short break."
         }
     }
 
@@ -127,7 +139,7 @@ struct AppStrings {
     func askOutingDuration(catName: String) -> String {
         switch language {
         case .chinese: "要让\(catName)出门多久呢？"
-        case .english: "How long should \(catName) go out?"
+        case .english: "How long should \(catName) play outside?"
         }
     }
 
@@ -140,8 +152,18 @@ struct AppStrings {
 
     func outingDeparture(salutation: String) -> String {
         switch language {
-        case .chinese: "我出门啦，\(salutation)工作要加油呀！"
+        case .chinese: "我出门啦，\(salutation)。工作要加油呀！"
         case .english: "I'm heading out, \(salutation). Good luck with your work!"
+        }
+    }
+
+    func outingDeparture(settings: AppSettings) -> String {
+        let suffix = settings.outingDepartureMessageSuffix.trimmingCharacters(in: .whitespacesAndNewlines)
+        switch language {
+        case .chinese:
+            return "我出门啦，\(settings.userSalutation)。\(suffix)"
+        case .english:
+            return "I'm heading out, \(settings.userSalutation). \(suffix)"
         }
     }
 
@@ -189,12 +211,12 @@ struct AppStrings {
 }
 
 extension AppStrings {
-    var settingsPetTab: String { language == .chinese ? "猫咪设置" : "Cat" }
+    var settingsPetTab: String { language == .chinese ? "宠物设置" : "Pet" }
     var settingsParametersTab: String { language == .chinese ? "参数设置" : "Parameters" }
     var settingsCollectablesTab: String { language == .chinese ? "收藏品箱" : "Collectables" }
-    var settingsAboutTab: String { language == .chinese ? "关于" : "About" }
+    var settingsAboutTab: String { language == .chinese ? "支持" : "Support" }
     var settingsSave: String { language == .chinese ? "保存" : "Save" }
-    var settingsCatName: String { language == .chinese ? "猫咪名字" : "Cat name" }
+    var settingsCatName: String { language == .chinese ? "宠物名字" : "Pet name" }
     var settingsSalutation: String { language == .chinese ? "对你的称呼" : "Calls you" }
     var settingsLanguage: String { language == .chinese ? "语言" : "Language" }
     var settingsAssetPackID: String { language == .chinese ? "资源包 ID" : "Asset pack ID" }
@@ -202,26 +224,58 @@ extension AppStrings {
     var settingsLoadSelected: String { language == .chinese ? "加载所选" : "Load pack" }
     var settingsScale: String { language == .chinese ? "缩放" : "Scale" }
     var settingsStartPosition: String { language == .chinese ? "起始出现位置" : "Start position" }
+    var settingsCatActivityScope: String { language == .chinese ? "宠物活动范围" : "Pet activity area" }
+    var settingsCatActivityScopeDockEdge: String { language == .chinese ? "程序坞边" : "Dock edge" }
+    var settingsCatActivityScopeDesktop: String { language == .chinese ? "整个桌面" : "Desktop" }
     var settingsReminderSection: String { language == .chinese ? "提醒设置" : "Reminders" }
     var settingsReminderEnabled: String { language == .chinese ? "开启提醒模式" : "Enable reminders" }
     var settingsWaterReminder: String { language == .chinese ? "喝水提醒" : "Water reminder" }
     var settingsMovementReminder: String { language == .chinese ? "久坐提醒" : "Stand up reminder" }
-    var settingsDefaultOutingDuration: String { language == .chinese ? "默认出门时长" : "Default outing" }
+    var settingsCustomReminder: String { language == .chinese ? "自定义提醒" : "Custom reminder" }
+    var settingsReminderMessage: String { language == .chinese ? "提醒文案" : "Message" }
+    var settingsDefaultOutingDuration: String { language == .chinese ? "默认出门时长" : "Default outing duration" }
     var settingsStateSection: String { language == .chinese ? "状态参数" : "State timing" }
     var settingsRestDuration: String { language == .chinese ? "休息时长" : "Rest duration" }
     var settingsWalkDuration: String { language == .chinese ? "散步时长" : "Walk duration" }
     var settingsWalkSpeed: String { language == .chinese ? "散步基础速度" : "Walk speed" }
-    var settingsDisplaySection: String { language == .chinese ? "多显示器设置" : "Display" }
-    var settingsDisplayRow: String { language == .chinese ? "猫咪出现在" : "Cat appears on" }
+    var settingsOutingDepartureMessage: String { language == .chinese ? "出门招呼文案" : "Outing message" }
+    var settingsDisplayRow: String { language == .chinese ? "宠物出现在" : "Pet appears on" }
     var settingsVersionPrefix: String { language == .chinese ? "当前版本" : "Version" }
-    var settingsProjectPrefix: String { language == .chinese ? "项目地址：" : "Project: " }
-    var settingsDonationLead: String { language == .chinese ? "如果你喜欢 DockCat，欢迎" : "If you like DockCat, please consider " }
-    var settingsDonationLink: String { language == .chinese ? "给我们赞赏" : "supporting us" }
+    var settingsProjectPrefix: String { language == .chinese ? "项目地址：" : "Project page: " }
+    var settingsDonationLead: String {
+        language == .chinese ? "如果你喜欢 DockCat，欢迎赞赏支持我们：" : "If you enjoy DockCat, please consider supporting us:"
+    }
+    var settingsWeChatDonation: String { language == .chinese ? "微信赞赏" : "WeChat donation" }
+    var settingsWeChatDonationDetail: String { language == .chinese ? "[打开二维码]" : "[Open QR code]" }
+    var settingsBuyMeACoffee: String { "Buy Me a Coffee" }
+    var settingsBuyMeACoffeeDetail: String { language == .chinese ? "[打开页面]" : "[Open page]" }
     var settingsAboutDescription: String {
-        language == .chinese ? "DockCat 是免费下载且开源的软件。作者：Auwuua" : "DockCat is an open-source software. Author: Auwuua"
+        language == .chinese ? "DockCat 是免费下载且开源的软件。作者：Auwuua" : "DockCat is a free and open-source software. Author: Auwuua"
     }
     var settingsStatisticsSection: String { language == .chinese ? "数据统计" : "Stats" }
     var settingsNoCollectables: String { language == .chinese ? "还没有收藏品" : "No collectables yet" }
+    var settingsRestoreData: String { language == .chinese ? "恢复数据" : "Restore Data" }
+    var restoreDataConfirmTitle: String { language == .chinese ? "恢复数据" : "Restore Data" }
+    var restoreDataConfirmMessage: String {
+        language == .chinese
+            ? "恢复数据会覆盖当前统计和收藏品箱数据。确定要继续吗？"
+            : "Restoring data will replace the current statistics and collectables. Continue?"
+    }
+    var restoreDataChooseFileTitle: String { language == .chinese ? "选择备份数据" : "Choose Backup Data" }
+    var restoreDataSuccessTitle: String { language == .chinese ? "数据已恢复" : "Data Restored" }
+    var restoreDataSuccessMessage: String { language == .chinese ? "统计和收藏品箱数据已恢复。" : "Statistics and collectables have been restored." }
+    var restoreDataFailureTitle: String { language == .chinese ? "恢复失败" : "Restore Failed" }
+    var restoreDataInvalidFileMessage: String {
+        language == .chinese
+            ? "所选文件不是有效的 DockCat 备份，或数据已损坏。"
+            : "The selected file is not a valid DockCat backup, or the data is damaged."
+    }
+    var restoreDataSkippedCollectablesHeader: String {
+        language == .chinese
+            ? "当前版本不支持以下收藏品，已跳过"
+            : "The current version does not support these collectables, so they were skipped"
+    }
+    var alertCancel: String { language == .chinese ? "取消" : "Cancel" }
     var assetPackValidationSuccessTitle: String { language == .chinese ? "加载校验结果" : "Asset pack check" }
     var assetPackValidationFailureTitle: String { language == .chinese ? "资源包加载失败" : "Asset pack failed" }
     var assetPackAlertOK: String { language == .chinese ? "好" : "OK" }
@@ -242,7 +296,7 @@ extension AppStrings {
 
     func outingStats(catName: String, events: Int, collectables: Int) -> String {
         switch language {
-        case .chinese: "\(catName) 出门遇到事件 \(events) 次、带回礼物 \(collectables) 次"
+        case .chinese: "\(catName)出门遇到事件 \(events) 次、带回礼物 \(collectables) 次"
         case .english: "\(catName) found \(events) outing events and \(collectables) gifts"
         }
     }

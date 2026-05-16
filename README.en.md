@@ -4,7 +4,7 @@
 
 DockCat is a desktop companion cat that lives by the macOS Dock.
 
-It rests, stretches, and wanders along the Dock, and can gently remind you to drink water or stand up for a short walk. DockCat is meant to be a quiet little presence on your screen: soft, lightweight, and never too demanding. You can pet the cat to change its pose, or drag it to a cozy spot you like. When you need to focus, you can send the cat out for a while, and it may come back with a tiny surprise.
+It rests, stretches, and wanders along the Dock, and can gently remind you to drink water or stand up for a short walk. DockCat is meant to be a quiet little presence on your screen: soft, lightweight, and never too demanding. You can pet the cat to change its pose, or drag it to a cozy spot you like. When you need to focus or leave, you can let the cat play outside for a while, and it may come back with a tiny surprise.
 
 <table>
   <tr>
@@ -19,7 +19,9 @@ It rests, stretches, and wanders along the Dock, and can gently remind you to dr
   </tr>
 </table>
 
-The current version supports macOS 12 and later, on both Intel Macs and Apple Silicon Macs. A Windows version is in preparation.
+The current version (v0.6) supports macOS 12 and later, on both Intel Macs and Apple Silicon Macs.
+
+Windows users can check out the [community ported version](https://github.com/yitian-ma/DockCatWin).
 
 ## Quick Start
 
@@ -45,7 +47,7 @@ The cat can switch between these states:
 - Transitioning: the cat briefly stretches or yawns.
 - Held: drag the cat with the left mouse button to move it.
 - Dialogue: the cat faces you for reminders and outing conversations.
-- Outing: the cat goes out for the duration you choose, then comes back with something it saw or a small gift.
+- Outing: the cat goes out for the duration you choose, then comes back with something funny. Please try it!
 
 ## Can I Customize The Cat?
 
@@ -97,17 +99,17 @@ When you update DockCat, it automatically reads the app's previous local data. I
 DockCat uses the PolyForm Noncommercial License. See [LICENSE.txt](LICENSE.txt) for the full terms. In short:
 
 - You may freely read, copy, modify, and build your own version of DockCat from this source code.
-- You may not use DockCat or modified versions of it for commercial purposes, including selling it, paid distribution, or bundling it with commercial products.
+- You may not use DockCat or modified versions of it for commercial purposes, including selling it, paid distribution, or bundling it with commercial products. Commercial use requires additional authorization.
 - If you publicly distribute a modified version, you must keep the original license and copyright notice, provide a link to this project, and describe your changes.
 
 ## Support And Contact
 
-DockCat is under active development. We plan to add more built-in cat characters and continue expanding the outing result list.
+DockCat is under active development. We plan to add more customizable functions and continue expanding the outing result list.
 
-If you like DockCat, please consider starring this project at the top right of this page, or using [WeChat donation](README_figs/Wechat_donate.jpg).
+If you enjoy DockCat, please consider starring this project at the top right of this page, or [Buy Me a Coffee](https://buymeacoffee.com/auwuua).
 
 If you need help while using DockCat, or want to support DockCat in another way, here is how to reach us:
 
 - Email: tianmaizhang@gmail.com
 
-We hope DockCat brings you the soft companionship you are looking for.
+We hope DockCat brings you the soft companionship you love.

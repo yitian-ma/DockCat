@@ -135,6 +135,7 @@ File requirements:
 - Square app-icon composition.
 - Keep enough padding for macOS icon masking and scaling.
 - This source should be exportable to `.icns`.
+- For bundled runtime `Resources/AppIcon`, downsample the transparent PNG to about 512 px on the long edge after generating the high-resolution source, then inset the visible artwork to about 86% of the transparent source image.
 - DockCat caches successfully loaded custom icons under `~/Library/Application Support/DockCat/AppIcon/`; regenerate the pack source and restart DockCat when changing the icon.
 
 ### Active State App Icon
@@ -149,6 +150,7 @@ File requirements:
 - Square app-icon composition.
 - Keep enough padding for macOS icon masking and scaling.
 - This source should be exportable to `.icns`.
+- For bundled runtime `Resources/AppIcon`, downsample the transparent PNG to about 512 px on the long edge after generating the high-resolution source, then inset the visible artwork to about 86% of the transparent source image.
 - DockCat caches successfully loaded custom icons under `~/Library/Application Support/DockCat/AppIcon/`; regenerate the pack source and restart DockCat when changing the icon.
 
 ## Collectables

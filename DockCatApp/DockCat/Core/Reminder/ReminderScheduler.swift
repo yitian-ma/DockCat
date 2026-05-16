@@ -6,6 +6,7 @@ final class ReminderScheduler {
     private(set) var pendingReminder: ReminderType?
     private var nextWaterDue: Date?
     private var nextMovementDue: Date?
+    private var nextCustomDue: Date?
 
     init(settings: AppSettings, now: @escaping () -> Date = Date.init) {
         self.settings = settings
@@ -31,6 +32,15 @@ final class ReminderScheduler {
             if previousSettings.movementReminderInterval != settings.movementReminderInterval {
                 nextMovementDue = current.addingTimeInterval(settings.movementReminderInterval)
             }
+            if !settings.customReminderEnabled {
+                nextCustomDue = nil
+                if pendingReminder == .custom {
+                    pendingReminder = nil
+                }
+            } else if !previousSettings.customReminderEnabled
+                || previousSettings.customReminderInterval != settings.customReminderInterval {
+                nextCustomDue = current.addingTimeInterval(settings.customReminderInterval)
+            }
         }
     }
 
@@ -43,10 +53,13 @@ final class ReminderScheduler {
         let current = now()
         let waterDue = nextWaterDue.map { $0 <= current } ?? false
         let movementDue = nextMovementDue.map { $0 <= current } ?? false
+        let customDue = settings.customReminderEnabled && (nextCustomDue.map { $0 <= current } ?? false)
 
         let due: ReminderType?
         if movementDue {
             due = .movement
+        } else if customDue {
+            due = .custom
         } else if waterDue {
             due = .water
         } else {
@@ -71,6 +84,12 @@ final class ReminderScheduler {
         case .movement:
             nextMovementDue = current.addingTimeInterval(settings.movementReminderInterval)
             nextWaterDue = current.addingTimeInterval(settings.waterReminderInterval)
+        case .custom:
+            if settings.customReminderEnabled {
+                nextCustomDue = current.addingTimeInterval(settings.customReminderInterval)
+            } else {
+                nextCustomDue = nil
+            }
         }
     }
 
@@ -85,6 +104,10 @@ final class ReminderScheduler {
             if nextWaterDue.map({ $0 <= due }) ?? false {
                 nextWaterDue = due
             }
+        case .custom:
+            if settings.customReminderEnabled {
+                nextCustomDue = due
+            }
         }
     }
 
@@ -92,11 +115,15 @@ final class ReminderScheduler {
         pendingReminder = nil
         nextWaterDue = nil
         nextMovementDue = nil
+        nextCustomDue = nil
     }
 
     private func resetTimers(from date: Date) {
         pendingReminder = nil
         nextWaterDue = date.addingTimeInterval(settings.waterReminderInterval)
         nextMovementDue = date.addingTimeInterval(settings.movementReminderInterval)
+        nextCustomDue = settings.customReminderEnabled
+            ? date.addingTimeInterval(settings.customReminderInterval)
+            : nil
     }
 }

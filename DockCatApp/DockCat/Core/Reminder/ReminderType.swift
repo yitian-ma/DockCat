@@ -3,9 +3,14 @@ import Foundation
 enum ReminderType: String, Codable, Equatable {
     case water
     case movement
+    case custom
 
-    func message(salutation: String, language: AppLanguage = .chinese) -> String {
-        AppStrings(language: language).reminderMessage(self, salutation: salutation)
+    func message(settings: AppSettings) -> String {
+        AppStrings(language: settings.language).reminderMessage(self, settings: settings)
+    }
+
+    func message(salutation: String, language: AppLanguage = .chinese, suffix: String? = nil) -> String {
+        AppStrings(language: language).reminderMessage(self, salutation: salutation, suffix: suffix)
     }
 
     init(from decoder: Decoder) throws {
@@ -16,6 +21,8 @@ enum ReminderType: String, Codable, Equatable {
             self = .water
         case "movement", "stand":
             self = .movement
+        case "custom":
+            self = .custom
         default:
             throw DecodingError.dataCorruptedError(
                 in: container,

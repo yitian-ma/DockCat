@@ -10,6 +10,8 @@ struct AppIconSource: Equatable {
 final class AppIconStore {
     typealias BundledIconSourceProvider = () -> AppIconSource?
 
+    private static let defaultPackID = "default-lizz"
+
     private let fileManager: FileManager
     private let applicationSupportURL: URL
     private let bundledIconSourceProvider: BundledIconSourceProvider
@@ -36,6 +38,9 @@ final class AppIconStore {
     }
 
     func prepareActiveIconSource(selectedPack: CatAssetPack) -> AppIconSource? {
+        if selectedPack.id == Self.defaultPackID {
+            return bundledIconSourceProvider()
+        }
         if let cachedCustomSource = cacheCustomIcons(from: selectedPack) {
             return cachedCustomSource
         }

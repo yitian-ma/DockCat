@@ -47,7 +47,20 @@ struct ActivitySpace: Equatable {
     }
 
     func clampedPoint(_ point: CGPoint, contentWidth: CGFloat = 0) -> CGPoint {
-        let range = walkRangeForContent(width: contentWidth)
+        dockEdgeClampedPoint(point, contentWidth: contentWidth)
+    }
+
+    func clampedPoint(_ point: CGPoint, contentSize: CGSize, scope: CatActivityScope) -> CGPoint {
+        switch scope {
+        case .dockEdge:
+            return dockEdgeClampedPoint(point, contentWidth: contentSize.width)
+        case .desktop:
+            return desktopClampedPoint(point, contentSize: contentSize)
+        }
+    }
+
+    func dockEdgeClampedPoint(_ point: CGPoint, contentWidth: CGFloat = 0) -> CGPoint {
+        let range = dockEdgeWalkRangeForContent(width: contentWidth)
         return CGPoint(
             x: GeometryUtils.clamped(point.x, to: range),
             y: baselineY
@@ -55,12 +68,52 @@ struct ActivitySpace: Equatable {
     }
 
     func walkRangeForContent(width: CGFloat) -> ClosedRange<CGFloat> {
+        dockEdgeWalkRangeForContent(width: width)
+    }
+
+    func walkRangeForContent(width: CGFloat, scope: CatActivityScope) -> ClosedRange<CGFloat> {
+        switch scope {
+        case .dockEdge:
+            return dockEdgeWalkRangeForContent(width: width)
+        case .desktop:
+            return desktopWalkRangeForContent(width: width)
+        }
+    }
+
+    func dockEdgeWalkRangeForContent(width: CGFloat) -> ClosedRange<CGFloat> {
         let safeWidth = max(0, width)
         let upperBound = walkRange.upperBound - safeWidth
         if upperBound < walkRange.lowerBound {
             return walkRange.lowerBound ... walkRange.lowerBound
         }
         return walkRange.lowerBound ... upperBound
+    }
+
+    func desktopClampedPoint(_ point: CGPoint, contentSize: CGSize) -> CGPoint {
+        let xRange = desktopWalkRangeForContent(width: contentSize.width)
+        let yRange = desktopYRangeForContent(height: contentSize.height)
+        return CGPoint(
+            x: GeometryUtils.clamped(point.x, to: xRange),
+            y: GeometryUtils.clamped(point.y, to: yRange)
+        )
+    }
+
+    func desktopWalkRangeForContent(width: CGFloat) -> ClosedRange<CGFloat> {
+        let safeWidth = max(0, width)
+        let upperBound = screenFrame.maxX - safeWidth
+        if upperBound < screenFrame.minX {
+            return screenFrame.minX ... screenFrame.minX
+        }
+        return screenFrame.minX ... upperBound
+    }
+
+    func desktopYRangeForContent(height: CGFloat) -> ClosedRange<CGFloat> {
+        let safeHeight = max(0, height)
+        let upperBound = screenFrame.maxY - safeHeight
+        if upperBound < screenFrame.minY {
+            return screenFrame.minY ... screenFrame.minY
+        }
+        return screenFrame.minY ... upperBound
     }
 
     private static func inferredDockEdge(screenFrame: CGRect, visibleFrame: CGRect) -> DockEdge {
