@@ -70,8 +70,8 @@ Windows 用户可以查看[社区移植版本](https://github.com/yitian-ma/Dock
 
 <table>
   <tr>
-    <td align="center"><img src="README_figs/gaolegao.png" alt="糕乐糕" width="220"></td>
-    <td align="center"><img src="README_figs/xiangxiang.png" alt="想想" width="220"></td>
+    <td align="center"><img src="README_figs/gaolegao.png" alt="糕乐糕" width="180"></td>
+    <td align="center"><img src="README_figs/xiangxiang.png" alt="想想" width="180"></td>
   </tr>
   <tr>
     <td align="center">糕乐糕</td>
